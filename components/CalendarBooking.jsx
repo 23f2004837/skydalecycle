@@ -1,113 +1,85 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState } from 'react';
 import Calendar from 'react-calendar';
-import BookingModal from './BookingModal';
-import { UserContext } from '../pages/_app';
-import { createBooking, fetchBookingsForUser } from '../lib/firebase';
+import 'react-calendar/dist/Calendar.css';
 
-export default function CalendarBooking() {
-  const { user } = useContext(UserContext);
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(false);
+export default function CalendarBooking({ onDateSelect }) {
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
-  useEffect(() => {
-    if (user) {
-      loadBookings();
-    }
-  }, [user]);
-
-  const loadBookings = async () => {
-    if (!user) return;
-    try {
-      setLoading(true);
-      const userBookings = await fetchBookingsForUser(user.uid);
-      setBookings(userBookings);
-    } catch (error) {
-      console.error('Error loading bookings:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDateClick = (date) => {
+  const handleDateChange = (date) => {
     setSelectedDate(date);
-    setShowModal(true);
+    onDateSelect(date);
   };
 
-  const handleConfirmBooking = async (timeSlot, notes) => {
-    if (!user || !selectedDate) return;
-
-    try {
-      await createBooking(
-        user.uid,
-        selectedDate.toDateString(),
-        timeSlot,
-        notes
-      );
-      alert('Booking created successfully!');
-      setShowModal(false);
-      setSelectedDate(null);
-      await loadBookings();
-    } catch (error) {
-      console.error('Error creating booking:', error);
-      alert('Failed to create booking. Please try again.');
-    }
-  };
+  // Disable past dates
+  const minDate = new Date();
+  minDate.setHours(0, 0, 0, 0);
 
   return (
-    <div className="container mx-auto p-6">
-      <h2 className="text-3xl font-bold mb-6">Book Your Cycle Repair</h2>
-      
-      <div className="mb-8">
+    <div className="card">
+      <h2 className="text-xl font-bold text-gray-900 mb-4">Select a Date</h2>
+      <div className="calendar-container">
+        <style jsx global>{`
+          .react-calendar {
+            width: 100%;
+            border: none;
+            font-family: inherit;
+          }
+          
+          .react-calendar__tile {
+            padding: 1em 0.5em;
+            border-radius: 0.5rem;
+          }
+          
+          .react-calendar__tile:enabled:hover,
+          .react-calendar__tile:enabled:focus {
+            background-color: #dbeafe;
+          }
+          
+          .react-calendar__tile--active {
+            background: #2563eb !important;
+            color: white !important;
+          }
+          
+          .react-calendar__tile--now {
+            background: #e0e7ff;
+          }
+          
+          .react-calendar__navigation button {
+            font-size: 1.1em;
+            font-weight: 600;
+          }
+          
+          .react-calendar__navigation button:enabled:hover,
+          .react-calendar__navigation button:enabled:focus {
+            background-color: #e5e7eb;
+          }
+          
+          .react-calendar__month-view__days__day--weekend {
+            color: #dc2626;
+          }
+          
+          .react-calendar__tile:disabled {
+            background-color: #f3f4f6;
+            color: #9ca3af;
+          }
+        `}</style>
         <Calendar
-          onClickDay={handleDateClick}
-          minDate={new Date()}
-          className="border rounded-lg shadow-lg"
+          onChange={handleDateChange}
+          value={selectedDate}
+          minDate={minDate}
+          className="shadow-sm"
         />
       </div>
-
-      {showModal && selectedDate && (
-        <BookingModal
-          date={selectedDate.toDateString()}
-          onClose={() => {
-            setShowModal(false);
-            setSelectedDate(null);
-          }}
-          onConfirm={handleConfirmBooking}
-        />
-      )}
-
-      <div className="mt-8">
-        <h3 className="text-2xl font-bold mb-4">Your Bookings</h3>
-        {loading ? (
-          <p>Loading bookings...</p>
-        ) : bookings.length === 0 ? (
-          <p className="text-gray-600">No bookings yet. Select a date to create one!</p>
-        ) : (
-          <div className="space-y-4">
-            {bookings.map((booking) => (
-              <div key={booking.id} className="border rounded-lg p-4 shadow">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-semibold">{booking.date} at {booking.timeSlot}</p>
-                    <p className="text-sm text-gray-600">Status: {booking.status}</p>
-                    {booking.notes && (
-                      <p className="text-sm mt-2">Notes: {booking.notes}</p>
-                    )}
-                  </div>
-                  <span className={`px-3 py-1 rounded text-sm ${
-                    booking.status === 'requested' ? 'bg-yellow-200 text-yellow-800' :
-                    booking.status === 'confirmed' ? 'bg-green-200 text-green-800' :
-                    'bg-gray-200 text-gray-800'
-                  }`}>
-                    {booking.status}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+        <p className="text-sm text-gray-600">Selected Date:</p>
+        <p className="font-semibold text-gray-900">
+          {selectedDate.toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })}
+        </p>
       </div>
     </div>
   );
